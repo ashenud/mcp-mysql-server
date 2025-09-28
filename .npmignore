@@ -1,0 +1,11 @@
+src/
+*.test.ts
+*.test.js
+tsconfig.json
+.gitignore
+.env*
+coverage/
+.nyc_output/
+*.log
+.DS_Store
+node_modules/
