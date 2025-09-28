@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "mysql": {
+      "command": "@ashenud/mcp-mysql-server",
+      "args": [],
+      "env": {
+        "MYSQL_HOST": "localhost",
+        "MYSQL_PORT": "3306",
+        "MYSQL_USER": "your_username",
+        "MYSQL_PASSWORD": "your_password",
+        "MYSQL_DATABASE": "your_database",
+        "MYSQL_SSL": "false",
+        "MYSQL_CONNECTION_LIMIT": "10"
+      }
+    }
+  }
+}

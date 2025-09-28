@@ -49,8 +49,8 @@ npm publish --access public
 
 if [ $? -eq 0 ]; then
     echo "✅ Successfully published MySQL MCP Server!"
-    echo "📦 Package: @mcp/mysql-server"
-    echo "🌐 Install with: npm install -g @mcp/mysql-server"
+    echo "📦 Package: @ashenud/mcp-mysql-server"
+    echo "🌐 Install with: npm install -g @ashenud/mcp-mysql-server"
 else
     echo "❌ Error: Failed to publish. Please check the errors above."
     exit 1

@@ -10,3 +10,8 @@ dist/
 *.tsbuildinfo
 coverage/
 .nyc_output/
+test-*.js
+demo-*.js
+setup-*.sh
+mcp-*.json
+cursor-*.json

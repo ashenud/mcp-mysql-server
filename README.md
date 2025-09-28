@@ -16,13 +16,13 @@ A Model Context Protocol (MCP) server for MySQL database integration with Cursor
 ### From npm (recommended)
 
 ```bash
-npm install -g @mcp/mysql-server
+npm install -g @ashenud/mcp-mysql-server
 ```
 
 ### From source
 
 ```bash
-git clone https://github.com/yourusername/mcp-mysql-server.git
+git clone https://github.com/ashenud/mcp-mysql-server.git
 cd mcp-mysql-server
 npm install
 npm run build
@@ -39,8 +39,15 @@ Add the following to your Cursor MCP settings:
 {
   "mcpServers": {
     "mysql": {
-      "command": "mcp-mysql-server",
-      "args": []
+      "command": "@ashenud/mcp-mysql-server",
+      "args": [],
+      "env": {
+        "MYSQL_HOST": "localhost",
+        "MYSQL_PORT": "3306",
+        "MYSQL_USER": "your_username",
+        "MYSQL_PASSWORD": "your_password",
+        "MYSQL_DATABASE": "your_database"
+      }
     }
   }
 }
@@ -160,7 +167,7 @@ Close the MySQL connection.
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/mcp-mysql-server.git
+git clone https://github.com/ashenud/mcp-mysql-server.git
 cd mcp-mysql-server
 ```
 
@@ -230,9 +237,9 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Support
 
-- 📧 Email: your.email@example.com
-- 🐛 Issues: [GitHub Issues](https://github.com/yourusername/mcp-mysql-server/issues)
-- 📖 Documentation: [GitHub Wiki](https://github.com/yourusername/mcp-mysql-server/wiki)
+- 📧 Email: udithamal.lk@gmail.com
+- 🐛 Issues: [GitHub Issues](https://github.com/ashenud/mcp-mysql-server/issues)
+- 📖 Documentation: [GitHub Wiki](https://github.com/ashenud/mcp-mysql-server/wiki)
 
 ## Changelog
 

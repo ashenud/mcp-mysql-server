@@ -28,6 +28,8 @@ class MySQLMCPServer {
   private server: Server;
   private pool: mysql.Pool | null = null;
   private config: Config | null = null;
+  private autoConnect: boolean = false;
+  private defaultConfig: Config | null = null;
 
   constructor() {
     this.server = new Server(
@@ -38,6 +40,59 @@ class MySQLMCPServer {
     );
 
     this.setupToolHandlers();
+    this.loadDefaultConfig();
+  }
+
+  private loadDefaultConfig() {
+    // Load default configuration from environment variables
+    this.defaultConfig = {
+      host: process.env.MYSQL_HOST || 'localhost',
+      port: parseInt(process.env.MYSQL_PORT || '3306'),
+      user: process.env.MYSQL_USER || '',
+      password: process.env.MYSQL_PASSWORD || '',
+      database: process.env.MYSQL_DATABASE || '',
+      ssl: process.env.MYSQL_SSL === 'true',
+      connectionLimit: parseInt(process.env.MYSQL_CONNECTION_LIMIT || '10'),
+    };
+
+    // Auto-connect if all required config is available
+    if (this.defaultConfig.user && this.defaultConfig.password) {
+      this.autoConnect = true;
+      this.connectWithDefaultConfig();
+    }
+  }
+
+  private async connectWithDefaultConfig() {
+    if (!this.defaultConfig) return;
+    
+    try {
+      this.config = this.defaultConfig;
+      
+      // Close existing connection if any
+      if (this.pool) {
+        await this.pool.end();
+      }
+
+      // Create new connection pool
+      this.pool = mysql.createPool({
+        host: this.config.host,
+        port: this.config.port,
+        user: this.config.user,
+        password: this.config.password,
+        database: this.config.database,
+        ssl: this.config.ssl ? {} : undefined,
+        connectionLimit: this.config.connectionLimit,
+      });
+
+      // Test the connection
+      const connection = await this.pool.getConnection();
+      await connection.ping();
+      connection.release();
+
+      console.error(`Auto-connected to MySQL server at ${this.config.host}:${this.config.port} (database: ${this.config.database})`);
+    } catch (error) {
+      console.error(`Auto-connect failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   private setupToolHandlers() {
@@ -115,6 +170,31 @@ class MySQLMCPServer {
               properties: {},
             },
           },
+          {
+            name: 'mysql_setup_persistent',
+            description: 'Set up persistent connection with default credentials',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                host: { type: 'string', description: 'MySQL host', default: 'localhost' },
+                port: { type: 'number', description: 'MySQL port', default: 3306 },
+                user: { type: 'string', description: 'MySQL username' },
+                password: { type: 'string', description: 'MySQL password' },
+                database: { type: 'string', description: 'Database name' },
+                ssl: { type: 'boolean', description: 'Use SSL connection', default: false },
+                connectionLimit: { type: 'number', description: 'Connection pool limit', default: 10 },
+              },
+              required: ['user', 'password'],
+            },
+          },
+          {
+            name: 'mysql_status',
+            description: 'Check connection status and database info',
+            inputSchema: {
+              type: 'object',
+              properties: {},
+            },
+          },
         ],
       };
     });
@@ -136,6 +216,10 @@ class MySQLMCPServer {
             return await this.handleDescribeTable(args);
           case 'mysql_disconnect':
             return await this.handleDisconnect();
+          case 'mysql_setup_persistent':
+            return await this.handleSetupPersistent(args);
+          case 'mysql_status':
+            return await this.handleStatus();
           default:
             throw new McpError(
               ErrorCode.MethodNotFound,
@@ -196,10 +280,15 @@ class MySQLMCPServer {
   }
 
   private async handleQuery(args: any) {
+    // Auto-connect if not connected and we have default config
+    if (!this.pool && this.defaultConfig) {
+      await this.connectWithDefaultConfig();
+    }
+    
     if (!this.pool) {
       throw new McpError(
         ErrorCode.InvalidRequest,
-        'Not connected to MySQL. Please connect first using mysql_connect.'
+        'Not connected to MySQL. Please connect first using mysql_connect or mysql_setup_persistent.'
       );
     }
 
@@ -225,10 +314,15 @@ class MySQLMCPServer {
   }
 
   private async handleListDatabases() {
+    // Auto-connect if not connected and we have default config
+    if (!this.pool && this.defaultConfig) {
+      await this.connectWithDefaultConfig();
+    }
+    
     if (!this.pool) {
       throw new McpError(
         ErrorCode.InvalidRequest,
-        'Not connected to MySQL. Please connect first using mysql_connect.'
+        'Not connected to MySQL. Please connect first using mysql_connect or mysql_setup_persistent.'
       );
     }
 
@@ -252,10 +346,15 @@ class MySQLMCPServer {
   }
 
   private async handleListTables(args: any) {
+    // Auto-connect if not connected and we have default config
+    if (!this.pool && this.defaultConfig) {
+      await this.connectWithDefaultConfig();
+    }
+    
     if (!this.pool) {
       throw new McpError(
         ErrorCode.InvalidRequest,
-        'Not connected to MySQL. Please connect first using mysql_connect.'
+        'Not connected to MySQL. Please connect first using mysql_connect or mysql_setup_persistent.'
       );
     }
 
@@ -287,10 +386,15 @@ class MySQLMCPServer {
   }
 
   private async handleDescribeTable(args: any) {
+    // Auto-connect if not connected and we have default config
+    if (!this.pool && this.defaultConfig) {
+      await this.connectWithDefaultConfig();
+    }
+    
     if (!this.pool) {
       throw new McpError(
         ErrorCode.InvalidRequest,
-        'Not connected to MySQL. Please connect first using mysql_connect.'
+        'Not connected to MySQL. Please connect first using mysql_connect or mysql_setup_persistent.'
       );
     }
 
@@ -333,6 +437,64 @@ class MySQLMCPServer {
         {
           type: 'text',
           text: 'Successfully disconnected from MySQL server',
+        },
+      ],
+    };
+  }
+
+  private async handleSetupPersistent(args: any) {
+    try {
+      this.defaultConfig = ConfigSchema.parse(args);
+      this.autoConnect = true;
+      
+      await this.connectWithDefaultConfig();
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Persistent connection setup successful! Server will auto-connect to ${this.defaultConfig.host}:${this.defaultConfig.port} (database: ${this.defaultConfig.database}) for all future requests.`,
+          },
+        ],
+      };
+    } catch (error) {
+      throw new McpError(
+        ErrorCode.InvalidParams,
+        `Failed to setup persistent connection: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  private async handleStatus() {
+    const isConnected = this.pool !== null;
+    const config = this.config;
+    const autoConnect = this.autoConnect;
+
+    let statusText = `Connection Status: ${isConnected ? 'Connected' : 'Disconnected'}\n`;
+    statusText += `Auto-Connect: ${autoConnect ? 'Enabled' : 'Disabled'}\n`;
+    
+    if (config) {
+      statusText += `Host: ${config.host}:${config.port}\n`;
+      statusText += `Database: ${config.database}\n`;
+      statusText += `User: ${config.user}\n`;
+    }
+
+    if (isConnected && this.pool) {
+      try {
+        const connection = await this.pool.getConnection();
+        await connection.ping();
+        connection.release();
+        statusText += `Connection Health: Healthy ✅`;
+      } catch (error) {
+        statusText += `Connection Health: Unhealthy ❌ (${error instanceof Error ? error.message : String(error)})`;
+      }
+    }
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: statusText,
         },
       ],
     };

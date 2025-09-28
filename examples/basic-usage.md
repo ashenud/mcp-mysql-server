@@ -6,7 +6,7 @@ This document provides examples of how to use the MySQL MCP Server with Cursor I
 
 1. Install the package globally:
 ```bash
-npm install -g @mcp/mysql-server
+npm install -g @ashenud/mcp-mysql-server
 ```
 
 2. Add to your Cursor MCP configuration:
